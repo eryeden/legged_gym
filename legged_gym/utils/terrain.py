@@ -35,6 +35,8 @@ from scipy import interpolate
 from isaacgym import terrain_utils
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 
+import enum
+
 class Terrain:
     def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
 
@@ -59,9 +61,15 @@ class Terrain:
 
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
         if cfg.curriculum:
-            self.curiculum()
+            if cfg.curriculum_selected:
+                self.curiculum_selected()
+            else:
+                self.curiculum()
+
         elif cfg.selected:
             self.selected_terrain()
+        elif cfg.demo:
+            self.demo_terrain()
         else:    
             self.randomized_terrain()   
         
@@ -81,10 +89,28 @@ class Terrain:
             difficulty = np.random.choice([0.5, 0.75, 0.9])
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
+
+    def demo_terrain(self):
+        for k in range(self.cfg.num_sub_terrains):
+            # Env coordinates in the world
+            (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
+            terrain_type, terrain_difficulty = self.cfg.terrain_structure[k%len(self.cfg.terrain_structure)]
+            terrain = self.make_terrain_selected(terrain_type, terrain_difficulty)
+            self.add_terrain_to_map(terrain, i, j)
         
+    def curiculum_selected(self):
+        for j in range(self.cfg.num_cols):
+            for i in range(self.cfg.num_rows):
+                # difficulty = i / self.cfg.num_rows
+                # choice = j / self.cfg.num_cols + 0.001
+                terrain_type, terrain_difficulty = self.cfg.terrain_structure2d[j][i]
+                terrain = self.make_terrain_selected(terrain_type, terrain_difficulty)
+                self.add_terrain_to_map(terrain, i, j)
+
     def curiculum(self):
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
+
                 difficulty = i / self.cfg.num_rows
                 choice = j / self.cfg.num_cols + 0.001
 
@@ -142,6 +168,70 @@ class Terrain:
         else:
             pit_terrain(terrain, depth=pit_depth, platform_size=4.)
         
+        return terrain
+
+    class TerrainType(enum.Enum):
+        plane = enum.auto()
+        smooth_slope = enum.auto()
+        rough_slope = enum.auto()
+        rough_stairs_up = enum.auto()
+        rough = enum.auto()
+        stairs_up = enum.auto()
+        stairs_down = enum.auto()
+        discrete = enum.auto()
+        stones = enum.auto()
+        gap = enum.auto()
+        pit = enum.auto()
+
+    def make_terrain_selected(self, terrain_type: TerrainType, difficulty):
+        terrain = terrain_utils.SubTerrain("terrain",
+                                           width=self.width_per_env_pixels,
+                                           length=self.width_per_env_pixels,
+                                           vertical_scale=self.cfg.vertical_scale,
+                                           horizontal_scale=self.cfg.horizontal_scale)
+        slope = difficulty * 0.4
+        step_height = 0.05 + 0.18 * difficulty
+        discrete_obstacles_height = 0.05 + difficulty * 0.2
+        stepping_stones_size = 1.5 * (1.05 - difficulty)
+        stone_distance = 0.05 if difficulty == 0 else 0.1
+        gap_size = 1. * difficulty
+        pit_depth = 1. * difficulty
+
+        if terrain_type == Terrain.TerrainType.smooth_slope:
+            terrain_utils.linear_sloped_terrain(terrain, slope=slope)
+        elif terrain_type == Terrain.TerrainType.rough_slope:
+            terrain_utils.linear_sloped_terrain(terrain, slope=slope)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
+                                                 downsampled_scale=0.2)
+        elif terrain_type == Terrain.TerrainType.rough:
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
+                                                 downsampled_scale=0.2)
+        elif terrain_type == Terrain.TerrainType.rough_stairs_up:
+            terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
+                                                 downsampled_scale=0.2)
+        elif terrain_type == Terrain.TerrainType.stairs_up:
+            terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
+        elif terrain_type == Terrain.TerrainType.stairs_down:
+            terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=-1.*step_height, platform_size=1.)
+        elif terrain_type == Terrain.TerrainType.discrete:
+            num_rectangles = 20
+            rectangle_min_size = 1.
+            rectangle_max_size = 2.
+            terrain_utils.discrete_obstacles_terrain(terrain, discrete_obstacles_height, rectangle_min_size,
+                                                     rectangle_max_size, num_rectangles, platform_size=3.)
+        elif terrain_type == Terrain.TerrainType.stones:
+            terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size,
+                                                  stone_distance=stone_distance, max_height=0., platform_size=4.)
+        elif terrain_type == Terrain.TerrainType.gap:
+            gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+        elif terrain_type == Terrain.TerrainType.pit:
+            pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+        elif terrain_type == Terrain.TerrainType.plane:
+            pass
+        else:
+            return None
+
         return terrain
 
     def add_terrain_to_map(self, terrain, row, col):
