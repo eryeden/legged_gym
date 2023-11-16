@@ -173,11 +173,16 @@ class Terrain:
     class TerrainType(enum.Enum):
         plane = enum.auto()
         smooth_slope = enum.auto()
+        smooth_hill = enum.auto()
         rough_slope = enum.auto()
-        rough_stairs_up = enum.auto()
+        rough_hill = enum.auto()
         rough = enum.auto()
         stairs_up = enum.auto()
+        rough_stairs_up = enum.auto()
         stairs_down = enum.auto()
+        rough_stairs_down = enum.auto()
+        stairs_hill_up = enum.auto()
+        stairs_hill_down = enum.auto()
         discrete = enum.auto()
         stones = enum.auto()
         gap = enum.auto()
@@ -199,8 +204,14 @@ class Terrain:
 
         if terrain_type == Terrain.TerrainType.smooth_slope:
             terrain_utils.linear_sloped_terrain(terrain, slope=slope)
+        elif terrain_type == Terrain.TerrainType.smooth_hill:
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope)
         elif terrain_type == Terrain.TerrainType.rough_slope:
             terrain_utils.linear_sloped_terrain(terrain, slope=slope)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
+                                                 downsampled_scale=0.2)
+        elif terrain_type == Terrain.TerrainType.rough_hill:
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
                                                  downsampled_scale=0.2)
         elif terrain_type == Terrain.TerrainType.rough:
@@ -210,10 +221,19 @@ class Terrain:
             terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
                                                  downsampled_scale=0.2)
+        elif terrain_type == Terrain.TerrainType.rough_stairs_down:
+            terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=1.*step_height, platform_size=1.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
+                                                 downsampled_scale=0.2)
         elif terrain_type == Terrain.TerrainType.stairs_up:
             terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
         elif terrain_type == Terrain.TerrainType.stairs_down:
             terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=-1.*step_height, platform_size=1.)
+        elif terrain_type == Terrain.TerrainType.stairs_hill_up:
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
+        elif terrain_type == Terrain.TerrainType.stairs_hill_down:
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=-1. * step_height,
+                                                platform_size=1.)
         elif terrain_type == Terrain.TerrainType.discrete:
             num_rectangles = 20
             rectangle_min_size = 1.
