@@ -196,6 +196,7 @@ class Terrain:
                                            horizontal_scale=self.cfg.horizontal_scale)
         slope = difficulty * 0.4
         step_height = 0.05 + 0.18 * difficulty
+        rough_height = 0.05 + 0.1 * difficulty
         discrete_obstacles_height = 0.05 + difficulty * 0.2
         stepping_stones_size = 1.5 * (1.05 - difficulty)
         stone_distance = 0.05 if difficulty == 0 else 0.1
@@ -215,8 +216,8 @@ class Terrain:
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
                                                  downsampled_scale=0.2)
         elif terrain_type == Terrain.TerrainType.rough:
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
-                                                 downsampled_scale=0.2)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-rough_height, max_height=rough_height, step=0.005,
+                                                 downsampled_scale=0.3)
         elif terrain_type == Terrain.TerrainType.rough_stairs_up:
             terrain_utils.linear_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=1.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005,
